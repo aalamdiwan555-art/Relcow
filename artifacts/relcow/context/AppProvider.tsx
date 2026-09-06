@@ -9,6 +9,7 @@ import React, {
   useState,
 } from 'react';
 import colors from '@/constants/colors';
+import { pushRelcowSnapshot } from '@/lib/cloudSync';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -68,6 +69,7 @@ export type RelcowState = {
   challenges: Challenge[];
   reminders: ReminderSettings;
   sync: {
+    deviceId: string;
     enabled: boolean;
     pendingChanges: number;
     lastSyncedAt: string | null;
@@ -99,6 +101,7 @@ const DEFAULT_STATE: RelcowState = {
     cadence: 'daily',
   },
   sync: {
+    deviceId: '',
     enabled: false,
     pendingChanges: 0,
     lastSyncedAt: null,
@@ -156,6 +159,7 @@ type AppContextValue = {
   createChallenge: (title: string, target: number, days: number) => void;
   joinChallenge: (code: string) => void;
   setSyncEnabled: (enabled: boolean) => void;
+  syncNow: () => Promise<boolean>;
   exportData: () => string;
   restoreData: (payload: string) => boolean;
   resetProfile: () => void;
@@ -443,8 +447,32 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSyncEnabled: (enabled) => {
         setState((current) => ({
           ...current,
-          sync: { ...current.sync, enabled },
+          sync: {
+            ...current.sync,
+            deviceId:
+              current.sync.deviceId ||
+              `device-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+            enabled,
+          },
         }));
+      },
+      syncNow: async () => {
+        if (!state.sync.enabled) return false;
+        const deviceId =
+          state.sync.deviceId ||
+          `device-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+        const response = await pushRelcowSnapshot(deviceId, state).catch(() => ({ ok: false }));
+        if (!response.ok) return false;
+        setState((current) => ({
+          ...current,
+          sync: {
+            ...current.sync,
+            deviceId,
+            pendingChanges: 0,
+            lastSyncedAt: new Date().toISOString(),
+          },
+        }));
+        return true;
       },
       exportData: () => JSON.stringify(state, null, 2),
       restoreData: (payload) => {

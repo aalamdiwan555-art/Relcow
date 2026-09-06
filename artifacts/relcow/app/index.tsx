@@ -380,6 +380,7 @@ function FeatureHub() {
     createChallenge,
     joinChallenge,
     setSyncEnabled,
+    syncNow,
     exportData,
     restoreData,
   } = useApp();
@@ -604,6 +605,16 @@ function FeatureHub() {
             </View>
             <Switch value={state.sync.enabled} onValueChange={setSyncEnabled} trackColor={{ false: palette.border, true: palette.mint }} thumbColor={palette.card} />
           </View>
+          {state.sync.enabled ? (
+            <FeatureButton
+              label="Sync now"
+              palette={palette}
+              secondary
+              onPress={() => {
+                syncNow().then((ok) => setMessage(ok ? 'Synced successfully.' : 'Sync unavailable. Your local queue is safe.'));
+              }}
+            />
+          ) : null}
           <FeatureButton label="Share export / backup" palette={palette} onPress={() => share(exportData())} />
           <TextInput value={restoreDraft} onChangeText={setRestoreDraft} placeholder="Paste a Relcow JSON backup to restore" placeholderTextColor={palette.mutedForeground} style={[inputStyle, { minHeight: 70 }]} multiline />
           <FeatureButton label="Restore local backup" palette={palette} secondary onPress={() => setMessage(restoreData(restoreDraft) ? 'Backup restored.' : 'Backup could not be read.')} />

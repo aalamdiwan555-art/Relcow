@@ -42,8 +42,9 @@ explicit accessibility permission required for screen-awareness mode.
 - Custom milestone entry
 - Quiet hours, haptics, sound preference, and reduced motion
 - Ad integration seam disabled by default
-- Sync metadata and conflict queue prepared without pretending online sync exists
-- Content moderation and admin reward catalogue extension points
+- Optional cloud sync now has a validated API push/pull path with action-ID merge and per-device rate limiting
+- Opt-in leaderboard, challenge, referral, moderation-report, reward-catalogue, and remote-config API endpoints
+- Admin reward catalogue and content moderation hooks are server-owned and kept separate from local counting
 
 ## Native-only boundary
 

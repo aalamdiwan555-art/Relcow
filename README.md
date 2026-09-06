@@ -1,25 +1,22 @@
 # Relcow — Reel Counter 3D
 
-Relcow is a zero-login, offline-first reel-awareness tracker. Users enter their own counts, earn XP, unlock milestones, and review their rhythm without Relcow monitoring another app.
+Relcow is a zero-login reel-awareness tracker. The repository contains two clients:
 
-## MVP
+- `artifacts/relcow` — Expo MVP for rapid UI iteration and Expo Go previews.
+- `native-android` — Kotlin Android app for the real opt-in AccessibilityService screen-awareness feature.
 
-- First-launch display name and optional daily awareness goal
-- One-tap +1, +5, and +10 reel tracking
-- Undo for the latest count
-- Local persistence with AsyncStorage
-- Today, week, month, and all-time totals
-- XP and level progression
-- Milestone collection progress
-- Responsible break-awareness prompts
-- Dark/light appearance modes
-- Haptics and reduced-motion preferences
-- Reset profile and local data
+## MVP capabilities
 
-## Run
+- Manual +1, +5, +10 tracking and undo
+- Optional Android screen awareness for likely sponsored/ad labels
+- Local-only storage, daily/weekly/monthly/all-time stats, XP, levels, and milestones
+- Local collection progress and shareable challenge code foundation
+- Dark/light theme, haptics, reduced motion, privacy disclosure, and reset controls
 
-This is an Expo app. Install dependencies with pnpm install, then run pnpm dev. Open the generated QR code in Expo Go or use the web preview.
+## Screen-awareness boundary
 
-## Product boundary
+Screen awareness is never silent. The user must enable Android accessibility permission, can pause it from the app, and can turn it off in Android Settings. Relcow reads visible accessibility labels only to identify likely sponsored or advertisement screens. It does not capture screenshots, keystrokes, passwords, private messages, or arbitrary screen recordings.
 
-Relcow tracks counts entered by the user. It does not secretly monitor, scrape, or automate another app.
+## Running
+
+The Expo client can be opened with Expo Go or the Replit preview. The native client is intended for Android Studio or CI because an Android SDK/Gradle toolchain is not available in the current Replit container.

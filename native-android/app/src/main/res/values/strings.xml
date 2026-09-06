@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Relcow</string>
+    <string name="accessibility_description">Relcow reads visible accessibility labels only to identify likely sponsored or advertisement screens. It does not capture screenshots, keystrokes, passwords, or private message content.</string>
+</resources>

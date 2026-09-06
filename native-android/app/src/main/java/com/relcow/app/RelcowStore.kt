@@ -23,6 +23,7 @@ data class RelcowStats(
     val allTime: Int,
     val xp: Int,
     val level: Int,
+    val streak: Int,
     val events: List<ReelEvent>
 )
 
@@ -53,6 +54,12 @@ class RelcowStore(context: Context) {
         prefs.edit().putBoolean("haptics", enabled).apply()
     }
 
+    fun soundEnabled(): Boolean = prefs.getBoolean("sound", false)
+
+    fun setSoundEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("sound", enabled).apply()
+    }
+
     fun reducedMotion(): Boolean = prefs.getBoolean("reduced_motion", false)
 
     fun setReducedMotion(enabled: Boolean) {
@@ -63,6 +70,25 @@ class RelcowStore(context: Context) {
 
     fun setAutoPaused(paused: Boolean) {
         prefs.edit().putBoolean("auto_paused", paused).apply()
+    }
+
+    fun remindersEnabled(): Boolean = prefs.getBoolean("reminders", false)
+
+    fun setRemindersEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("reminders", enabled).apply()
+    }
+
+    fun customMilestones(): List<Int> =
+        (prefs.getString("custom_milestones", "") ?: "")
+            .split(',')
+            .mapNotNull { it.toIntOrNull() }
+            .filter { it > 0 }
+            .distinct()
+            .sorted()
+
+    fun addCustomMilestone(value: Int) {
+        val next = (customMilestones() + value).distinct().sorted()
+        prefs.edit().putString("custom_milestones", next.joinToString(",")).apply()
     }
 
     fun record(amount: Int, source: String, packageName: String? = null) {
@@ -102,6 +128,7 @@ class RelcowStore(context: Context) {
             allTime = allTime,
             xp = xp,
             level = (xp / 100) + 1,
+            streak = calculateStreak(events),
             events = events
         )
     }
@@ -113,6 +140,36 @@ class RelcowStore(context: Context) {
         val code = "$prefix-${(1000..9999).random()}"
         prefs.edit().putString("share_code", code).apply()
         return code
+    }
+
+    fun referralCode(): String = "REL-${shareCode().replace("-", "")}"
+
+    fun achievements(stats: RelcowStats): List<String> = buildList {
+        if (stats.allTime >= 1) add("First notice")
+        if (stats.allTime >= 10) add("Double digits")
+        if (stats.allTime >= 50) add("Pattern spotter")
+        if (stats.allTime >= 100) add("Century of awareness")
+        if (stats.streak >= 3) add("Three-day rhythm")
+        if (stats.streak >= 7) add("Week in view")
+        if (stats.today >= dailyGoal()) add("Goal complete")
+    }
+
+    fun exportData(): String {
+        val stats = stats()
+        return buildString {
+            appendLine("Relcow local data export")
+            appendLine("Profile: ${profileName()}")
+            appendLine("Daily goal: ${dailyGoal()}")
+            appendLine("Total reels: ${stats.allTime}")
+            appendLine("XP: ${stats.xp}")
+            appendLine("Level: ${stats.level}")
+            appendLine("Streak: ${stats.streak} days")
+            appendLine()
+            appendLine("Events:")
+            stats.events.forEach {
+                appendLine("${it.date},${it.timestamp},${it.amount},${it.source},${it.packageName ?: ""}")
+            }
+        }
     }
 
     fun reset() {
@@ -149,5 +206,24 @@ class RelcowStore(context: Context) {
                 )
             }
         }
+    }
+
+    private fun calculateStreak(events: List<ReelEvent>): Int {
+        val activeDays = events
+            .map { LocalDate.parse(it.date) }
+            .distinct()
+            .sortedDescending()
+        if (activeDays.isEmpty()) return 0
+        var streak = 0
+        var cursor = LocalDate.now()
+        for (day in activeDays) {
+            if (day == cursor || (streak == 0 && day == cursor.minusDays(1))) {
+                streak++
+                cursor = day.minusDays(1)
+            } else if (day.isBefore(cursor)) {
+                break
+            }
+        }
+        return streak
     }
 }

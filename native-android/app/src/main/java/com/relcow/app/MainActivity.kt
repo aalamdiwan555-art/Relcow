@@ -1,7 +1,9 @@
 package com.relcow.app
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -284,7 +286,7 @@ private fun MainShell(
             )
             MainTab.STATS -> StatsScreen(Modifier.padding(padding), stats)
             MainTab.FRIENDS -> FriendsScreen(Modifier.padding(padding), store)
-            MainTab.COLLECTION -> CollectionScreen(Modifier.padding(padding), stats)
+            MainTab.COLLECTION -> CollectionScreen(Modifier.padding(padding), stats, store)
             MainTab.PROFILE -> ProfileScreen(
                 modifier = Modifier.padding(padding),
                 store = store,
@@ -334,6 +336,7 @@ private fun HomeScreen(
                 Column {
                     Text("RELCOW", color = Mint, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
                     Text("Hey ${profileName.substringBefore(' ')}.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("${stats.streak} day rhythm", color = Coral, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                 }
                 Icon(Icons.Default.Security, contentDescription = "Privacy first", tint = Mint, modifier = Modifier.size(26.dp))
             }
@@ -552,6 +555,8 @@ private fun FriendsScreen(modifier: Modifier, store: RelcowStore) {
                         Icon(Icons.Default.Share, contentDescription = null)
                         Text("Share challenge code", modifier = Modifier.padding(start = 8.dp))
                     }
+                    Text("REFERRAL-READY CODE", color = Coral, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 18.dp))
+                    Text(store.referralCode(), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
                 }
             }
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(20.dp), modifier = Modifier.padding(top = 12.dp)) {
@@ -568,12 +573,24 @@ private fun FriendsScreen(modifier: Modifier, store: RelcowStore) {
 }
 
 @Composable
-private fun CollectionScreen(modifier: Modifier, stats: RelcowStats) {
-    val milestones = listOf(10, 25, 50, 100, 150, 200, 300, 500)
+private fun CollectionScreen(modifier: Modifier, stats: RelcowStats, store: RelcowStore) {
+    val milestones = (listOf(10, 25, 50, 100, 150, 200, 300, 500) + store.customMilestones()).distinct().sorted()
+    val achievements = store.achievements(stats)
     LazyColumn(modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp)) {
         item {
             Text("Collection", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text("${milestones.count { stats.allTime >= it }} of ${milestones.size} milestones unlocked", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp))
+            Text("Achievements", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
+            if (achievements.isEmpty()) {
+                Text("Your first achievement appears after your first tracked reel.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(bottom = 16.dp))
+            } else {
+                achievements.forEach { achievement ->
+                    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Mint)
+                        Text(achievement, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp))
+                    }
+                }
+            }
         }
         items(milestones) { milestone ->
             val unlocked = stats.allTime >= milestone
@@ -601,7 +618,9 @@ private fun ProfileScreen(
     onThemeChanged: () -> Unit,
     onReset: () -> Unit
 ) {
+    val context = LocalContext.current
     var showReset by remember { mutableStateOf(false) }
+    var customMilestone by remember { mutableStateOf("") }
     LazyColumn(modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp)) {
         item {
             Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -616,6 +635,47 @@ private fun ProfileScreen(
                 store.setReducedMotion(it)
                 onChanged()
             }
+            ToggleRow("Sound", "Keep count feedback quiet by default", store.soundEnabled(), Icons.Default.PlayArrow) {
+                store.setSoundEnabled(it)
+                onChanged()
+            }
+            ToggleRow("Break reminders", "One gentle local check-in each evening", store.remindersEnabled(), Icons.Default.Settings) {
+                store.setRemindersEnabled(it)
+                RelcowReminderScheduler.setEnabled(context, it)
+                if (it && Build.VERSION.SDK_INT >= 33 && context is ComponentActivity) {
+                    context.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4203)
+                }
+                onChanged()
+            }
+            SectionTitle("Custom milestones", "PERSONAL")
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = customMilestone,
+                    onValueChange = { customMilestone = it.filter(Char::isDigit).take(4) },
+                    label = { Text("Reels") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = {
+                        customMilestone.toIntOrNull()?.let {
+                            store.addCustomMilestone(it)
+                            customMilestone = ""
+                            onChanged()
+                        }
+                    },
+                    enabled = customMilestone.toIntOrNull()?.let { it > 0 } == true,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text("Add")
+                }
+            }
+            Text(
+                if (store.customMilestones().isEmpty()) "Add a personal target and it will appear in Collection." else "Your custom targets: ${store.customMilestones().joinToString(", ")}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
             SectionTitle("Privacy", "EXPLICIT")
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(18.dp)) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
@@ -628,6 +688,30 @@ private fun ProfileScreen(
                     )
                 }
             }
+            SectionTitle("Data", "PORTABLE")
+            OutlinedButton(
+                onClick = {
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, store.exportData())
+                            },
+                            "Export Relcow data"
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Text("Export local data", modifier = Modifier.padding(start = 8.dp))
+            }
+            Text(
+                "Referral-ready code: ${store.referralCode()}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 10.dp)
+            )
             OutlinedButton(onClick = { showReset = true }, modifier = Modifier.fillMaxWidth().padding(top = 18.dp)) {
                 Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = Coral)
                 Text("Reset profile and data", color = Coral, modifier = Modifier.padding(start = 8.dp))

@@ -18,9 +18,11 @@ The service is paused from the app at any time, and manual counting remains avai
 - Manual +1, +5, +10 count and undo
 - Auto-ad detection through an explicit accessibility permission
 - Daily, weekly, monthly, and all-time stats
-- XP, levels, milestones, and local collectible progress
+- XP, levels, streaks, achievements, custom milestones, and local collectible progress
 - Local challenge/share code foundation
-- Dark/light theme, haptics, reduced motion, and reset controls
+- Referral-ready share codes, data export, daily break reminders, dark/light theme,
+  haptics, sound preference, reduced motion, and reset controls
+- AdManager seam with `ADS_ENABLED = false`; ads are not shown in the MVP
 
 The Android SDK and Gradle toolchain are not available in the current Replit
 container, so this native source is checked in for Android Studio or CI builds.
